@@ -18,4 +18,3 @@ grad_backprop = network.backprop_gradient(x_batch, t_batch)
 for key in grad_numerical.keys():
     diff = np.average(np.abs(grad_backprop[key] - grad_numerical[key]))  #权重和偏置是一个矩阵 所以可以通过求平均值来看和数值法求导的误差
     print(key + ": " + str(diff))  # diff是numpy.float64位数据要用str函数转换为字符串才能拼接
-    break
