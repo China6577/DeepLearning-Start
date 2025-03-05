@@ -1,9 +1,7 @@
-import numpy as np
 from collections import OrderedDict
 
-from affineLayer import AffineLayer
-from reluLayer import ReluLayer
-from softmaxWithLossLayer import SoftmaxWithLossLayer
+from CNN深度学习架构.神经网络层.layers import *
+from CNN深度学习架构.神经网络层.functions import calculate_gradient
 
 
 class TwoLayerNet:
@@ -28,7 +26,7 @@ class TwoLayerNet:
         self.layers['Relu1'] = ReluLayer()
         self.layers['Affine2'] = AffineLayer(self.params['W2'], self.params['b2'])
 
-        self.lastLayer = SoftmaxWithLossLayer
+        self.lastLayer = SoftmaxWithLossLayer()
 
     def predict(self, x):
         for layer in self.layers.values():
@@ -36,12 +34,62 @@ class TwoLayerNet:
 
         return x
 
+    # x:输入数据, t:监督数据
     def loss(self, x, t):
+        y = self.predict(x)
+        return self.lastLayer.forward(y, t)
+
+    def accuracy(self, x, t):
         # x：输入数据  t：监督数据
         y = self.predict(x)
-        y = np.argmax(y, axis=1)
+        y = np.argmax(y, axis=1)  # 返回最有可能的预测结果索引 一维数组
         if t.ndim != 1:
-            t=t.argmax(axis=1)
-        accuracy = np.sum(y==t) / float(x.shape[0])
+            t = t.argmax(axis=1)  # 返回正确结果的索引 一维数组
+        accuracy = np.sum(y == t) / float(x.shape[0])  # 通过逐个判断两个一维数组的值是否相等来计算准确率
 
         return accuracy
+
+    def backprop_gradient(self, x, t):
+        """
+        误差反向传播法求梯度 后面使用该方法求梯度 高效
+        :param x: 输入数据
+        :param t: 测试数据
+        :return: 梯度矩阵
+        """
+        self.loss(x, t)
+
+        dout = 1
+        dout = self.lastLayer.backward(dout)
+
+        layers = list(self.layers.values())
+        layers.reverse()
+        for layer in layers:
+            dout = layer.backward(dout)
+
+        grads = {}
+        grads['W1'] = self.layers['Affine1'].dW
+        grads['b1'] = self.layers['Affine1'].db
+        grads['W2'] = self.layers['Affine2'].dW
+        grads['b2'] = self.layers['Affine2'].db
+
+        return grads
+
+    def numerical_gradient(self, x, t):
+        """
+        数值法求梯度 用于梯度确认
+        :param x: 图像数据
+        :param t: 正确解标签
+        :return: 梯度矩阵
+        """
+        loss_W = lambda W: self.loss(x, t)  # loss_W是匿名函数W, 函数体是self.loss(x, t)
+
+        grads = {}
+        grads['W1'] = calculate_gradient(loss_W, self.params['W1'])
+        grads['b1'] = calculate_gradient(loss_W, self.params['b1'])
+        grads['W2'] = calculate_gradient(loss_W, self.params['W2'])
+        grads['b2'] = calculate_gradient(loss_W, self.params['b2'])
+
+        return grads
+
+
+
