@@ -1,6 +1,5 @@
-import numpy as np
 from mnist数据集.mnist import load_mnist
-from CNN深度学习架构.神经网络层.twoLayerNet import TwoLayerNet
+from CNN深度学习架构.算法测试.twoLayerNet import TwoLayerNet
 from CNN深度学习架构.神经网络层.optimizer import *
 
 # 加载训练数据和测试数据
@@ -33,7 +32,6 @@ for i in range(iters_num):
 
     loss = network.loss(x_train, t_train)
     train_loss_list.append(loss)
-    print(loss)
 
     if i % iter_per_epoch == 0:
         train_acc = network.accuracy(x_train, t_train)

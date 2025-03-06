@@ -1,7 +1,7 @@
 import numpy as np
 
 from mnist数据集.mnist import load_mnist
-from CNN深度学习架构.神经网络层.twoLayerNet import TwoLayerNet
+from CNN深度学习架构.算法测试.twoLayerNet import TwoLayerNet
 
 (x_train, t_train), (x_test, t_test) = load_mnist(normalize=True, one_hot_label=True)
 
