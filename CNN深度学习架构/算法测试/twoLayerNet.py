@@ -5,19 +5,20 @@ from CNN深度学习架构.神经网络层.functions import calculate_gradient
 
 
 class TwoLayerNet:
-    def __init__(self, input_size, hidden_size, output_size, weight_init_std=0.01):
+    def __init__(self, input_size, hidden_size, output_size):
         """
         初始化权重和偏置 生成层实现
         :param input_size: 输入的神经元数量
         :param hidden_size: 隐藏层的神经元数量
         :param output_size: 最终输出的神经元数量
-        :param weight_init_std: 权重初始化的标准差
         """
         # 初始化权重和偏置
+        # 防止梯度消失和表现力受限: 根据使用的激活函数为Relu 权重的标准差为He初始值 根号(2/n) n为前一层的神经元个数
+        # 当激活函数是sigmoid或tanh等S型曲线函数时 初始值用Xavier初始值 根号(1/n) n为前一层的神经元个数
         self.params = {}
-        self.params['W1'] = weight_init_std * np.random.randn(input_size, hidden_size)
+        self.params['W1'] = np.sqrt(2/input_size) * np.random.randn(input_size, hidden_size)
         self.params['b1'] = np.zeros(hidden_size)
-        self.params['W2'] = weight_init_std * np.random.randn(hidden_size, output_size)
+        self.params['W2'] = np.sqrt(2/hidden_size) * np.random.randn(hidden_size, output_size)
         self.params['b2'] = np.zeros(output_size)
 
         # 生成层实现

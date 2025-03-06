@@ -32,6 +32,7 @@ for i in range(iters_num):
 
     loss = network.loss(x_train, t_train)
     train_loss_list.append(loss)
+    print(loss)
 
     if i % iter_per_epoch == 0:
         train_acc = network.accuracy(x_train, t_train)
