@@ -1,7 +1,7 @@
 import time
 
 from mnist数据集.mnist import load_mnist
-from CNN深度学习架构.算法测试.twoLayerNet import TwoLayerNet
+from CNN深度学习架构.神经网络层.two_layer_net import TwoLayerNet
 from CNN深度学习架构.神经网络层.optimizer import *
 
 import numpy as np

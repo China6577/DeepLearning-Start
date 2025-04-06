@@ -4,7 +4,7 @@ import numpy as np
 
 from mnist数据集.mnist import load_mnist
 from CNN深度学习架构.神经网络层.simple_convnet import SimpleConvNet
-from CNN深度学习架构.神经网络层.trainer import Trainer
+from CNN深度学习架构.神经网络层.simple_convnet_trainer import Trainer
 from pathlib import Path
 
 # 读入数据
