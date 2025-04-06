@@ -1,5 +1,6 @@
 from CNN深度学习架构.神经网络层.functions import *
 import numpy as np
+from CNN深度学习架构.神经网络层.util import im2col, col2im
 
 
 class SigmoidLayer:
@@ -65,7 +66,9 @@ class AffineLayer:
 
         self.x = None
         self.original_x_shape = None
-        self.dW = None  # self.dW 和 self.db 可以用于后续的参数更新
+
+        # self.dW 和 self.db 可以用于后续的参数更新
+        self.dW = None
         self.db = None
 
     def forward(self, x):
@@ -108,7 +111,7 @@ class SoftmaxWithLossLayer:
 
         return self.loss
 
-    def backward(self):
+    def backward(self, dout=1):
         batch_size = self.t.shape[0]
         if self.t.size == self.y.size:  # 监督数据是one-hot-vector的情况
             dx = (self.y - self.t) / batch_size  # 梯度=预测数据-测试数据 反向传播要除以批的大小 传递给前面的层单个数据的误差
@@ -123,7 +126,7 @@ class SoftmaxWithLossLayer:
         return dx
 
 
-class BatchNormalization:
+class BatchNormalizationLayer:
     """
     可参考: https://arxiv.org/abs/1502.03167
     设置在Affine层和Relu层之间
@@ -215,7 +218,7 @@ class BatchNormalization:
         return dx
 
 
-class Dropout:
+class DropoutLayer:
     """
     丢弃层:
         1.学习时随机删除删除神经元 相当于不同的模型在训练
@@ -238,3 +241,110 @@ class Dropout:
 
     def backward(self, dout):
         return dout * self.mask  # True则不变 False则输出0(因为神经元被丢弃)
+
+
+class ConvolutionLayer:
+    """
+    卷积层:
+        相当于图形处理的 “滤波器运算”
+        保持训练时数据形状不变
+    """
+
+    def __init__(self, W, b, stride=1, pad=0):
+        self.W = W
+        self.b = b
+        self.stride = stride
+        self.pad = pad
+
+        # 中间数据（backward时使用）
+        self.x = None
+        self.col = None
+        self.col_W = None
+
+        # 权重和偏置参数的梯度
+        self.dW = None
+        self.db = None
+
+    def forward(self, x):
+        FN, C, FH, FW = self.W.shape  # 滤波器的形状
+        N, C, H, W = x.shape
+        out_h = int(1 + (H + 2 * self.pad - FH) / self.stride)  # 卷积运算后输出的高
+        out_w = int(1 + (W + 2 * self.pad - FW) / self.stride)  # 卷积运算后输出的宽
+
+        # im2col用于加快多维矩阵的计算 将多维矩阵转换为二维矩阵
+        col = im2col(x, FH, FW, self.stride, self.pad)  # 特征图横向展开
+        col_W = self.W.reshape(FN, -1).T  # 滤波器纵向展开 形状为 (滤波器个数 * 滤波器元素个数) 不能写成  self.W.reshape(-1, FN)
+        out = np.dot(col, col_W) + self.b
+
+        # (N, out_h, out_w, -1).transpose(0, 3, 1, 2) 将第二个位置变为C((N, out_h, out_w, -1)索引为3的值)...
+        out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)  # 将输出变为(N, C, H, W)的形式
+
+        self.x = x
+        self.col = col
+        self.col_W = col_W
+
+        return out
+
+    def backward(self, dout):
+        FN, C, FH, FW = self.W.shape
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
+
+        self.db = np.sum(dout, axis=0)
+        self.dW = np.dot(self.col.T, dout)
+        self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
+
+        dcol = np.dot(dout, self.col_W.T)
+        dx = col2im(dcol, self.x.shape, FH, FW, self.stride, self.pad)
+
+        return dx
+
+
+class PoolingLayer:
+    """
+    池化层:
+        使用Max池化(取目标区域的最大值)
+        池化层的步幅和窗口大小相同 无填充
+    """
+
+    def __init__(self, pool_h, pool_w, stride=1, pad=0):
+        self.pool_h = pool_h
+        self.pool_w = pool_w
+        self.stride = stride
+        self.pad = pad
+
+        self.x = None
+        self.arg_max = None
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        out_h = int(1 + (H - self.pool_h) / self.stride)  # 池化层输出的高
+        out_w = int(1 + (W - self.pool_w) / self.stride)  # 池化层输出的宽
+
+        col = im2col(x, self.pool_h, self.pool_w, self.stride, self.pad)
+
+        # 每一行为池化目标区域的值组成的数组
+        col = col.reshape(-1, self.pool_h * self.pool_w)  # 数据转化为 (池化层元素数组个数 * 池化层数组元素个数) 的形状
+
+        arg_max = np.argmax(col, axis=1)
+
+        col = np.max(col, axis=1)  # 求沿着列方向对每一行(单个池化层元素数组)的最大值
+
+        out = col.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
+
+        self.x = x
+        self.arg_max = arg_max
+
+        return out
+
+    def backward(self, dout):
+        dout = dout.transpose(0, 2, 3, 1)
+
+        pool_size = self.pool_h * self.pool_w
+        dmax = np.zeros((dout.size, pool_size))
+        dmax[np.arange(self.arg_max.size), self.arg_max.flatten()] = dout.flatten()
+        dmax = dmax.reshape(dout.shape + (pool_size,))
+
+        dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
+        dx = col2im(dcol, self.x.shape, self.pool_h, self.pool_w, self.stride, self.pad)
+
+        return dx

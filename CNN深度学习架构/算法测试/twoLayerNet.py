@@ -3,6 +3,8 @@ from collections import OrderedDict
 from CNN深度学习架构.神经网络层.layers import *
 from CNN深度学习架构.神经网络层.functions import calculate_gradient
 
+import numpy as np
+
 
 class TwoLayerNet:
     def __init__(self, input_size, hidden_size, output_size):
@@ -59,8 +61,7 @@ class TwoLayerNet:
         """
         self.loss(x, t)
 
-        dout = 1
-        dout = self.lastLayer.backward(dout)
+        dout = self.lastLayer.backward()
 
         layers = list(self.layers.values())
         layers.reverse()
